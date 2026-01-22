@@ -1,18 +1,6 @@
 import { supabase } from "./supabase";
-import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { User } from "./data";
 import { MOCK_USERS } from "./mockData";
-
-const BASE_URL = `https://${projectId}.supabase.co/functions/v1/server`;
-
-const getHeaders = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token || publicAnonKey}`
-  };
-};
 
 export interface SignUpData {
   email: string;
@@ -23,87 +11,176 @@ export interface SignUpData {
 }
 
 export const api = {
-  // Auth & User
+  // ============================================================================
+  // AUTH & USER
+  // ============================================================================
   signUp: async (data: SignUpData): Promise<{ profile: User }> => {
-    // 1. Create User on Server (Auto-confirm)
-    const response = await fetch(`${BASE_URL}/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}` // Use anon key for public route
-      },
-      body: JSON.stringify(data)
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(err.error || "Signup failed");
-    }
-
-    // 2. Sign In to get Session
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    // 1. Create auth user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
-      password: data.password
+      password: data.password,
     });
 
     if (authError) throw authError;
+    if (!authData.user) throw new Error("Failed to create user");
 
-    return await response.json();
+    // 2. Create profile
+    const profile = {
+      id: authData.user.id,
+      email: data.email,
+      name: data.name,
+      role: data.role,
+      school: data.school,
+      bio: `Hi, I'm ${data.name}!`,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${authData.user.id}`,
+    };
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .insert(profile);
+
+    if (profileError) throw profileError;
+
+    return { profile: profile as User };
   },
 
   getProfile: async (): Promise<User | null> => {
-    const headers = await getHeaders();
-    const response = await fetch(`${BASE_URL}/profile`, { headers });
-    if (response.status === 401) return null;
-    if (!response.ok) throw new Error("Failed to fetch profile");
-    return response.json();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (error) throw error;
+    return data as User;
   },
 
-  updateProfile: async (data: Partial<User>) => {
-    const headers = await getHeaders();
-    const response = await fetch(`${BASE_URL}/profile`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(data)
-    });
-    if (!response.ok) throw new Error("Failed to update profile");
-    return response.json();
+  updateProfile: async (updates: Partial<User>) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 
-  // Matching
+  // ============================================================================
+  // MATCHING
+  // ============================================================================
   getCandidates: async (): Promise<User[]> => {
-    const headers = await getHeaders();
-    const response = await fetch(`${BASE_URL}/candidates?t=${Date.now()}`, { headers });
-    if (!response.ok) throw new Error("Failed to fetch candidates");
-    return response.json();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    // Get all profiles
+    const { data: allProfiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("*")
+      .neq("id", user.id); // Exclude self
+
+    if (profilesError) throw profilesError;
+
+    // Get user's swipes
+    const { data: swipes, error: swipesError } = await supabase
+      .from("swipes")
+      .select("target_id")
+      .eq("user_id", user.id);
+
+    if (swipesError) throw swipesError;
+
+    // Filter out swiped profiles
+    const swipedIds = new Set(swipes?.map(s => s.target_id) || []);
+    const candidates = allProfiles?.filter(p => !swipedIds.has(p.id)) || [];
+
+    return candidates as User[];
   },
 
   swipe: async (targetId: string, direction: 'left' | 'right'): Promise<{ isMatch: boolean }> => {
-    const headers = await getHeaders();
-    const response = await fetch(`${BASE_URL}/swipe`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ targetId, direction })
-    });
-    if (!response.ok) throw new Error("Swipe failed");
-    return response.json();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
+    // Record swipe
+    const { error: swipeError } = await supabase
+      .from("swipes")
+      .insert({
+        user_id: user.id,
+        target_id: targetId,
+        direction,
+      });
+
+    if (swipeError) throw swipeError;
+
+    let isMatch = false;
+
+    // Check for match if right swipe
+    if (direction === 'right') {
+      const { data: reciprocalSwipe } = await supabase
+        .from("swipes")
+        .select("*")
+        .eq("user_id", targetId)
+        .eq("target_id", user.id)
+        .eq("direction", "right")
+        .single();
+
+      if (reciprocalSwipe) {
+        isMatch = true;
+
+        // Create match (ensure user1_id < user2_id for uniqueness)
+        const [user1, user2] = [user.id, targetId].sort();
+
+        const { error: matchError } = await supabase
+          .from("matches")
+          .insert({
+            user1_id: user1,
+            user2_id: user2,
+          });
+
+        // Ignore duplicate match errors
+        if (matchError && !matchError.message.includes("unique")) {
+          throw matchError;
+        }
+      }
+    }
+
+    return { isMatch };
   },
 
   getMatches: async (): Promise<User[]> => {
-    const headers = await getHeaders();
-    const response = await fetch(`${BASE_URL}/matches`, { headers });
-    if (!response.ok) return [];
-    return response.json();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // Get matches where user is either user1 or user2
+    const { data: matches, error } = await supabase
+      .from("matches")
+      .select(`
+        user1_id,
+        user2_id,
+        user1:profiles!matches_user1_id_fkey(*),
+        user2:profiles!matches_user2_id_fkey(*)
+      `)
+      .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+
+    if (error) throw error;
+
+    // Extract the other user's profile
+    const profiles = matches?.map(m => {
+      return m.user1_id === user.id ? m.user2 : m.user1;
+    }) || [];
+
+    return profiles as User[];
   },
 
+  // Seed function for testing (creates mock swipes/matches)
   seed: async () => {
-    const headers = await getHeaders();
-    const response = await fetch(`${BASE_URL}/seed`, { method: 'POST', headers });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error || "Seed failed");
-    }
-    return response.json();
+    // This is just a stub - in the new system, seed data is in SQL
+    return { success: true };
   },
 };
-

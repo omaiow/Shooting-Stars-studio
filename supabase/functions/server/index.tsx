@@ -1,8 +1,53 @@
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
-import { createClient } from "@supabase/supabase-js";
-import * as kv from "./kv_store.tsx";
+import { Hono } from "npm:hono@^4.0.0";
+import { cors } from "npm:hono@^4.0.0/cors";
+import { logger } from "npm:hono@^4.0.0/logger";
+import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
+
+// KV Store Implementation (inlined from kv_store.tsx)
+const kvClient = () => createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
+
+const kv = {
+    set: async (key: string, value: any): Promise<void> => {
+        const supabase = kvClient();
+        const { error } = await supabase.from("kv_store_b0184cae").upsert({
+            key,
+            value
+        });
+        if (error) {
+            throw new Error(error.message);
+        }
+    },
+
+    get: async (key: string): Promise<any> => {
+        const supabase = kvClient();
+        const { data, error } = await supabase.from("kv_store_b0184cae").select("value").eq("key", key).maybeSingle();
+        if (error) {
+            throw new Error(error.message);
+        }
+        return data?.value;
+    },
+
+    del: async (key: string): Promise<void> => {
+        const supabase = kvClient();
+        const { error } = await supabase.from("kv_store_b0184cae").delete().eq("key", key);
+        if (error) {
+            throw new Error(error.message);
+        }
+    },
+
+    getByPrefix: async (prefix: string): Promise<any[]> => {
+        const supabase = kvClient();
+        const { data, error } = await supabase.from("kv_store_b0184cae").select("key, value").like("key", prefix + "%");
+        if (error) {
+            throw new Error(error.message);
+        }
+        return data?.map((d) => d.value) ?? [];
+    }
+};
+
 
 const app = new Hono();
 
