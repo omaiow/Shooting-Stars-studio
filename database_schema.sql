@@ -1,10 +1,19 @@
--- Shooting Stars Database Schema
--- Run this in the Supabase SQL Editor: https://supabase.com/dashboard/project/ddrasmwcwzurwsfglqpz/sql/new
+-- ============================================================================
+-- SHOOTING STARS - COMPLETE DATABASE MIGRATION
+-- ============================================================================
+-- WARNING: This will DROP and recreate all tables, deleting existing data!
+-- Run this in Supabase SQL Editor: https://supabase.com/dashboard/project/ddrasmwcwzurwsfglqpz/sql/new
+
+-- Drop existing tables (clean slate)
+DROP TABLE IF EXISTS matches CASCADE;
+DROP TABLE IF EXISTS swipes CASCADE;
+DROP TABLE IF EXISTS skills CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
 
 -- ============================================================================
 -- PROFILES TABLE
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS profiles (
+CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -16,10 +25,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- Policies
 CREATE POLICY "Users can view all profiles"
   ON profiles FOR SELECT
   TO authenticated
@@ -38,7 +45,7 @@ CREATE POLICY "Users can insert own profile"
 -- ============================================================================
 -- SKILLS TABLE
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS skills (
+CREATE TABLE skills (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -53,15 +60,25 @@ CREATE POLICY "Users can view all skills"
   TO authenticated
   USING (true);
 
-CREATE POLICY "Users can manage own skills"
-  ON skills FOR ALL
+CREATE POLICY "Users can insert own skills"
+  ON skills FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own skills"
+  ON skills FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own skills"
+  ON skills FOR DELETE
   TO authenticated
   USING (auth.uid() = user_id);
 
 -- ============================================================================
 -- SWIPES TABLE
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS swipes (
+CREATE TABLE swipes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   target_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -85,7 +102,7 @@ CREATE POLICY "Users can create own swipes"
 -- ============================================================================
 -- MATCHES TABLE
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS matches (
+CREATE TABLE matches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user1_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   user2_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -101,22 +118,38 @@ CREATE POLICY "Users can view own matches"
   TO authenticated
   USING (auth.uid() = user1_id OR auth.uid() = user2_id);
 
--- ============================================================================
--- SEED DATA (Mock Users)
--- ============================================================================
-INSERT INTO auth.users (id, email) VALUES
-  ('00000000-0000-0000-0000-000000000001', 'sarah@example.com'),
-  ('00000000-0000-0000-0000-000000000002', 'mike@example.com'),
-  ('00000000-0000-0000-0000-000000000003', 'luna@example.com'),
-  ('00000000-0000-0000-0000-000000000004', 'chris@example.com')
-ON CONFLICT (id) DO NOTHING;
+CREATE POLICY "System can create matches"
+  ON matches FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
 
+-- ============================================================================
+-- SEED DATA - Mock Profiles
+-- ============================================================================
+-- Note: These UUIDs must correspond to actual auth.users created via signup
+-- For now, we'll use placeholder UUIDs. Real users will create their own profiles.
+
+-- Uncomment and update these after creating test accounts manually:
+/*
 INSERT INTO profiles (id, email, name, role, school, bio, avatar) VALUES
-  ('00000000-0000-0000-0000-000000000001', 'sarah@example.com', 'Sarah Stellar', 'Designer', 'Nebula Arts', 'Graphic designer wanting to learn to code.', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=60'),
-  ('00000000-0000-0000-0000-000000000002', 'mike@example.com', 'Mike Meteor', 'Musician', 'Rock Star Academy', 'Guitarist looking for website help.', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60'),
-  ('00000000-0000-0000-0000-000000000003', 'luna@example.com', 'Luna Lander', 'Chef', 'Culinary Institute', 'Chef who wants to learn Spanish.', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=60'),
-  ('00000000-0000-0000-0000-000000000004', 'chris@example.com', 'Comet Chris', 'Tutor', 'Quantum High', 'Math tutor looking for piano lessons.', 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400&auto=format&fit=crop&q=60')
-ON CONFLICT (id) DO NOTHING;
+  ('REPLACE-WITH-REAL-UUID-1', 'sarah@example.com', 'Sarah Stellar', 'Designer', 'Nebula Arts', 'Graphic designer wanting to learn to code.', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=60'),
+  ('REPLACE-WITH-REAL-UUID-2', 'mike@example.com', 'Mike Meteor', 'Musician', 'Rock Star Academy', 'Guitarist looking for website help.', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60');
 
--- Note: Seed users won't be able to actually log in since they don't have passwords in auth.users
--- They exist only for discovery purposes
+INSERT INTO skills (user_id, name, is_offering) VALUES
+  ('REPLACE-WITH-REAL-UUID-1', 'Graphic Design', true),
+  ('REPLACE-WITH-REAL-UUID-1', 'Photoshop', true),
+  ('REPLACE-WITH-REAL-UUID-1', 'React', false),
+  ('REPLACE-WITH-REAL-UUID-1', 'Web Development', false),
+  ('REPLACE-WITH-REAL-UUID-2', 'Guitar', true),
+  ('REPLACE-WITH-REAL-UUID-2', 'Music Theory', true),
+  ('REPLACE-WITH-REAL-UUID-2', 'HTML/CSS', false),
+  ('REPLACE-WITH-REAL-UUID-2', 'JavaScript', false);
+*/
+
+-- ============================================================================
+-- DONE!
+-- ============================================================================
+-- Next steps:
+-- 1. Sign up with a new account
+-- 2. Add skills to your profile
+-- 3. Create more test accounts if you want mock users to swipe on

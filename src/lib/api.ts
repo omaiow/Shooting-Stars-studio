@@ -55,22 +55,69 @@ export const api = {
       .single();
 
     if (error) throw error;
-    return data as User;
+
+    // Load skills
+    const { data: skills } = await supabase
+      .from("skills")
+      .select("*")
+      .eq("user_id", user.id);
+
+    const offering = skills?.filter(s => s.is_offering).map(s => ({ id: s.id, name: s.name })) || [];
+    const seeking = skills?.filter(s => !s.is_offering).map(s => ({ id: s.id, name: s.name })) || [];
+
+    return {
+      ...data,
+      offering,
+      seeking,
+    } as User;
   },
 
   updateProfile: async (updates: Partial<User>) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .update(updates)
-      .eq("id", user.id)
-      .select()
-      .single();
+    // Separate skills from profile updates
+    const { offering, seeking, ...profileUpdates } = updates;
 
-    if (error) throw error;
-    return data;
+    // Update profile fields (name, bio, etc.)
+    if (Object.keys(profileUpdates).length > 0) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .update(profileUpdates)
+        .eq("id", user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+    }
+
+    // Handle skills updates if provided
+    if (offering !== undefined || seeking !== undefined) {
+      // Delete existing skills
+      await supabase.from("skills").delete().eq("user_id", user.id);
+
+      // Insert new skills
+      const skillsToInsert = [
+        ...(offering || []).map(skill => ({
+          user_id: user.id,
+          name: skill.name,
+          is_offering: true,
+        })),
+        ...(seeking || []).map(skill => ({
+          user_id: user.id,
+          name: skill.name,
+          is_offering: false,
+        })),
+      ];
+
+      if (skillsToInsert.length > 0) {
+        const { error } = await supabase.from("skills").insert(skillsToInsert);
+        if (error) throw error;
+      }
+    }
+
+    // Return updated profile with skills
+    return api.getProfile();
   },
 
   // ============================================================================
@@ -100,7 +147,26 @@ export const api = {
     const swipedIds = new Set(swipes?.map(s => s.target_id) || []);
     const candidates = allProfiles?.filter(p => !swipedIds.has(p.id)) || [];
 
-    return candidates as User[];
+    // Load skills for each candidate
+    const candidatesWithSkills = await Promise.all(
+      candidates.map(async (profile) => {
+        const { data: skills } = await supabase
+          .from("skills")
+          .select("*")
+          .eq("user_id", profile.id);
+
+        const offering = skills?.filter(s => s.is_offering).map(s => ({ id: s.id, name: s.name })) || [];
+        const seeking = skills?.filter(s => !s.is_offering).map(s => ({ id: s.id, name: s.name })) || [];
+
+        return {
+          ...profile,
+          offering,
+          seeking,
+        };
+      })
+    );
+
+    return candidatesWithSkills as User[];
   },
 
   swipe: async (targetId: string, direction: 'left' | 'right'): Promise<{ isMatch: boolean }> => {
@@ -175,7 +241,26 @@ export const api = {
       return m.user1_id === user.id ? m.user2 : m.user1;
     }) || [];
 
-    return profiles as User[];
+    // Load skills for each matched profile
+    const profilesWithSkills = await Promise.all(
+      profiles.map(async (profile: any) => {
+        const { data: skills } = await supabase
+          .from("skills")
+          .select("*")
+          .eq("user_id", profile.id);
+
+        const offering = skills?.filter(s => s.is_offering).map(s => ({ id: s.id, name: s.name })) || [];
+        const seeking = skills?.filter(s => !s.is_offering).map(s => ({ id: s.id, name: s.name })) || [];
+
+        return {
+          ...profile,
+          offering,
+          seeking,
+        };
+      })
+    );
+
+    return profilesWithSkills as User[];
   },
 
   // Seed function for testing (creates mock swipes/matches)
