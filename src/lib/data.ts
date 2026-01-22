@@ -9,12 +9,13 @@ export interface Skill {
 
 export interface User {
   id: string;
+  email: string;
   name: string;
   avatar: string;
   role: string;
   school: string;
-  offering: Skill[];
-  seeking: Skill[];
+  offering?: Skill[];  // Optional, loaded separately from skills table
+  seeking?: Skill[];   // Optional, loaded separately from skills table
   bio: string;
 }
 
@@ -32,6 +33,7 @@ export const skills: Skill[] = [
 export const mockUsers: User[] = [
   {
     id: "1",
+    email: "alex@tech.edu",
     name: "Alex Chen",
     avatar: "https://images.unsplash.com/photo-1759884248009-92c5e957708e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb21wdXRlciUyMHNjaWVuY2UlMjBzdHVkZW50JTIwY29kaW5nfGVufDF8fHx8MTc2Nzk1Mzk3OHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     role: "CS Student",
@@ -42,6 +44,7 @@ export const mockUsers: User[] = [
   },
   {
     id: "2",
+    email: "sarah@art.edu",
     name: "Sarah Miller",
     avatar: "https://images.unsplash.com/photo-1544168190-79c17527004f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMGNyZWF0aXZlJTIwZGVzaWduZXIlMjBzdHVkZW50fGVufDF8fHx8MTc2Nzk1Mzk3OHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     role: "Design Major",
@@ -52,6 +55,7 @@ export const mockUsers: User[] = [
   },
   {
     id: "3",
+    email: "jordan@state.edu",
     name: "Jordan Smith",
     avatar: "https://images.unsplash.com/photo-1550592704-6c76defa9985?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHVkZW50JTIwd3JpdGluZyUyMG5vdGVib29rfGVufDF8fHx8MTc2Nzk1Mzk3OHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     role: "English Lit",
@@ -62,6 +66,7 @@ export const mockUsers: User[] = [
   },
   {
     id: "4",
+    email: "emily@cinema.edu",
     name: "Emily Davis",
     avatar: "https://images.unsplash.com/photo-1622179986499-fa3dfabc8ef3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb2xsZWdlJTIwc3R1ZGVudCUyMHBvcnRyYWl0JTIwc21pbGluZ3xlbnwxfHx8fDE3Njc5NTM5Nzh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     role: "Film Student",

@@ -171,7 +171,7 @@ export const api = {
     if (error) throw error;
 
     // Extract the other user's profile
-    const profiles = matches?.map(m => {
+    const profiles = matches?.map((m: any) => {
       return m.user1_id === user.id ? m.user2 : m.user1;
     }) || [];
 
