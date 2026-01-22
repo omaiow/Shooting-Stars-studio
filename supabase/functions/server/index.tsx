@@ -82,14 +82,24 @@ app.post(`/signup`, async (c) => {
         const { email, password, name, role, school } = await c.req.json();
 
         // Create Supabase Auth User
-        const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL')!,
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+        if (!supabaseUrl || !supabaseServiceKey) {
+            console.error("Missing Supabase Env Vars");
+            return c.json({ error: "Server Configuration Error: Missing Env Vars" }, 500);
+        }
+
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
         // Check if user exists first to give better error
-        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-        const existing = users.find(u => u.email === email);
+        const listResult = await supabaseAdmin.auth.admin.listUsers();
+        if (listResult.error) {
+            console.error("List users error:", listResult.error);
+            return c.json({ error: "Failed to check existing users" }, 500);
+        }
+
+        const existing = listResult.data.users.find(u => u.email === email);
         if (existing) {
             return c.json({ error: "User already registered" }, 400);
         }
