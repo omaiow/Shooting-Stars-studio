@@ -33,7 +33,7 @@ const SEED_USERS = [
     {
         id: "seed-1",
         name: "Sarah Stellar",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+        avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=60",
         bio: "Graphic designer wanting to learn to code.",
         school: "Nebula Arts",
         role: "Designer",
@@ -43,7 +43,7 @@ const SEED_USERS = [
     {
         id: "seed-2",
         name: "Mike Meteor",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Mike",
+        avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60",
         bio: "Guitarist looking for website help.",
         school: "Rock Star Academy",
         role: "Musician",
@@ -53,7 +53,7 @@ const SEED_USERS = [
     {
         id: "seed-3",
         name: "Luna Lander",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Luna",
+        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=60",
         bio: "Chef who wants to learn Spanish.",
         school: "Culinary Institute",
         role: "Chef",
@@ -63,7 +63,7 @@ const SEED_USERS = [
     {
         id: "seed-4",
         name: "Comet Chris",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Chris",
+        avatar: "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=400&auto=format&fit=crop&q=60",
         bio: "Math tutor looking for piano lessons.",
         school: "Quantum High",
         role: "Tutor",
@@ -77,7 +77,7 @@ const SEED_USERS = [
 // ------------------------------------------------------------------
 
 // 1. SIGN UP
-app.post(`/signup`, async (c) => {
+app.post(`/signup`, async (c: any) => {
     try {
         const { email, password, name, role, school } = await c.req.json();
 
@@ -99,7 +99,7 @@ app.post(`/signup`, async (c) => {
             return c.json({ error: "Failed to check existing users" }, 500);
         }
 
-        const existing = listResult.data.users.find(u => u.email === email);
+        const existing = listResult.data.users.find((u: any) => u.email === email);
         if (existing) {
             return c.json({ error: "User already registered" }, 400);
         }
@@ -141,7 +141,7 @@ app.post(`/signup`, async (c) => {
 });
 
 // 2. GET PROFILE
-app.get(`/profile`, async (c) => {
+app.get(`/profile`, async (c: any) => {
     const user = await getUser(c);
     if (!user) return c.text("Unauthorized", 401);
 
@@ -163,7 +163,7 @@ app.get(`/profile`, async (c) => {
 });
 
 // 3. UPDATE PROFILE
-app.post(`/profile`, async (c) => {
+app.post(`/profile`, async (c: any) => {
     const user = await getUser(c);
     if (!user) return c.text("Unauthorized", 401);
 
@@ -180,7 +180,7 @@ app.post(`/profile`, async (c) => {
 });
 
 // 4. GET CANDIDATES (Discover)
-app.get(`/candidates`, async (c) => {
+app.get(`/candidates`, async (c: any) => {
     const user = await getUser(c);
     if (!user) return c.text("Unauthorized", 401);
 
@@ -227,7 +227,7 @@ app.get(`/candidates`, async (c) => {
 });
 
 // 5. SWIPE
-app.post(`/swipe`, async (c) => {
+app.post(`/swipe`, async (c: any) => {
     const user = await getUser(c);
     if (!user) return c.text("Unauthorized", 401);
 
@@ -268,7 +268,7 @@ app.post(`/swipe`, async (c) => {
 });
 
 // 6. GET MATCHES
-app.get(`/matches`, async (c) => {
+app.get(`/matches`, async (c: any) => {
     const user = await getUser(c);
     if (!user) return c.text("Unauthorized", 401);
 
@@ -294,7 +294,7 @@ app.get(`/matches`, async (c) => {
 });
 
 // 7. SEED
-app.post(`/seed`, async (c) => {
+app.post(`/seed`, async (c: any) => {
     const user = await getUser(c);
     // Allow seeding if authenticated
     if (!user) return c.text("Unauthorized", 401);

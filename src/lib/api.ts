@@ -14,9 +14,17 @@ const getHeaders = async () => {
   };
 };
 
+export interface SignUpData {
+  email: string;
+  password: string;
+  name: string;
+  role: string;
+  school: string;
+}
+
 export const api = {
   // Auth & User
-  signUp: async (data: any): Promise<{ profile: User }> => {
+  signUp: async (data: SignUpData): Promise<{ profile: User }> => {
     // 1. Create User on Server (Auto-confirm)
     const response = await fetch(`${BASE_URL}/signup`, {
       method: 'POST',
@@ -33,7 +41,7 @@ export const api = {
     }
 
     // 2. Sign In to get Session
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { error: authError } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password
     });

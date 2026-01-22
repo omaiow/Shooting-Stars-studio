@@ -23,11 +23,11 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
-  signIn: async () => {},
-  signUp: async () => {},
-  signOut: async () => {},
-  refreshProfile: async () => {},
-  loginAsDemo: () => {},
+  signIn: async () => { },
+  signUp: async () => { },
+  signOut: async () => { },
+  refreshProfile: async () => { },
+  loginAsDemo: () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -41,9 +41,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
-          fetchProfile();
+        fetchProfile();
       } else {
-          setLoading(false);
+        setLoading(false);
       }
     });
 
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchProfile();
       } else {
         if (!isDemo) {
-            setProfile(null);
+          setProfile(null);
         }
         setLoading(false);
       }
@@ -77,36 +77,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string) => {
-     // Handled by supabase client directly in components usually
+    // Handled by supabase client directly in components usually
   };
 
   const signUp = async (data: any) => {
-     const { profile } = await api.signUp(data);
-     setProfile(profile as UserProfile);
+    const { profile } = await api.signUp(data);
+    setProfile(profile as UserProfile);
   };
 
   const signOut = async () => {
     if (isDemo) {
-        setIsDemo(false);
-        setSession(null);
-        setProfile(null);
-        toast.info("Exited Demo Mode");
+      setIsDemo(false);
+      setSession(null);
+      setProfile(null);
+      toast.info("Exited Demo Mode");
     } else {
-        await supabase.auth.signOut();
-        toast.success("Logged out");
+      await supabase.auth.signOut();
+      toast.success("Logged out");
     }
   };
 
   const loginAsDemo = () => {
-      setLoading(true);
-      setTimeout(() => {
-          setIsDemo(true);
-          // @ts-ignore - Mocking session for demo
-          setSession({ access_token: "mock_token", user: { id: "demo-user" } });
-          setProfile(CURRENT_USER as unknown as UserProfile);
-          setLoading(false);
-          toast.success("Welcome, Alex Explorer! (Demo Mode)");
-      }, 600);
+    setLoading(true);
+    setTimeout(() => {
+      setIsDemo(true);
+      // @ts-expect-error - Mocking session for demo
+      setSession({ access_token: "mock_token", user: { id: "demo-user" } });
+      setProfile(CURRENT_USER as unknown as UserProfile);
+      setLoading(false);
+      toast.success("Welcome, Alex Explorer! (Demo Mode)");
+    }, 600);
   };
 
   return (
