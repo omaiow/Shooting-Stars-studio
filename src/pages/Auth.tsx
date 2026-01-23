@@ -32,10 +32,8 @@ export function Auth({ onBack, onSuccess }: AuthProps) {
             } else {
                 await signIn(email, password);
             }
-            // Add a small delay to ensure auth state updates before redirecting
-            setTimeout(() => {
-                onSuccess();
-            }, 100);
+            // Don't call onSuccess - let the auth state change handle the redirect
+            // The useAuth hook will automatically update and App.tsx will show Dashboard
         } catch (err: any) {
             console.error('Auth error:', err);
             setError(err.message || 'Something went wrong');
