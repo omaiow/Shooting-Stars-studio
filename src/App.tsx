@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LandingPage } from "./components/LandingPage";
 import { DashboardLayout } from "./components/DashboardLayout";
 import { SkillMatcher } from "./components/SkillMatcher";
 import { MatchesList } from "./components/MatchesList";
@@ -28,8 +29,8 @@ function AppContent() {
     );
   }
 
-  // Show auth form if requested or if not authenticated
-  if (showAuth || !session) {
+  // Show auth form if specifically requested
+  if (showAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#020817] p-4 relative overflow-hidden">
         {/* Background Decoration */}
@@ -41,17 +42,25 @@ function AppContent() {
 
         <div className="z-10 w-full flex flex-col items-center">
           <AuthForm onSuccess={() => setShowAuth(false)} />
-          {session && (
-            <button
-              onClick={() => setShowAuth(false)}
-              className="mt-8 text-slate-400 hover:text-white text-sm transition-colors flex items-center gap-2 group"
-            >
-              <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to App
-            </button>
-          )}
+          <button
+            onClick={() => setShowAuth(false)}
+            className="mt-8 text-slate-400 hover:text-white text-sm transition-colors flex items-center gap-2 group"
+          >
+            <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Home
+          </button>
         </div>
         <Toaster />
       </div>
+    );
+  }
+
+  // Show landing page if not authenticated
+  if (!session) {
+    return (
+      <>
+        <LandingPage onEnter={() => setShowAuth(true)} />
+        <Toaster />
+      </>
     );
   }
 
