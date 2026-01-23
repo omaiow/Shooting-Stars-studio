@@ -1,12 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card } from "./ui/card";
+import { Badge } from "./ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "./ui/dialog";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthProvider";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowLeft, Plus, X } from "lucide-react";
+import { skills, Skill } from "../lib/data";
 
 interface AuthFormProps {
   onSuccess: () => void;
@@ -26,6 +36,21 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [school, setSchool] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [offering, setOffering] = useState<Skill[]>([]);
+  const [seeking, setSeeking] = useState<Skill[]>([]);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
+  const [isSeekDialogOpen, setIsSeekDialogOpen] = useState(false);
+
+  // Auto-preview avatar when URL changes
+  useEffect(() => {
+    if (avatarUrl.trim()) {
+      setAvatarPreview(avatarUrl);
+    } else {
+      setAvatarPreview(null);
+    }
+  }, [avatarUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,10 +63,31 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
         await signIn(trimmedEmail, password);
         onSuccess();
       } else if (mode === "signup") {
+        // Validate skills
+        if (offering.length === 0) {
+          toast.error("Please select at least one skill you can offer");
+          setLoading(false);
+          return;
+        }
+        if (seeking.length === 0) {
+          toast.error("Please select at least one skill you want to learn");
+          setLoading(false);
+          return;
+        }
+
         // Show creating account message
         toast.loading("Creating your account...", { id: "signup-loading" });
 
-        await signUp({ email: trimmedEmail, password, name, role, school });
+        await signUp({
+          email: trimmedEmail,
+          password,
+          name,
+          role,
+          school,
+          avatar: avatarUrl || undefined,
+          offering,
+          seeking,
+        });
 
         // Dismiss loading toast
         toast.dismiss("signup-loading");
@@ -130,6 +176,119 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
               <div className="space-y-2">
                 <Label>School</Label>
                 <Input placeholder="University" value={school} onChange={(e) => setSchool(e.target.value)} required />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Profile Picture URL</Label>
+              <Input
+                placeholder="https://example.com/avatar.jpg"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+              />
+              {avatarPreview && (
+                <div className="flex justify-center mt-2">
+                  <img
+                    src={avatarPreview}
+                    alt="Avatar preview"
+                    className="w-16 h-16 rounded-full object-cover border-2 border-slate-200"
+                    onError={() => setAvatarPreview(null)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>I Can Teach / Offer</Label>
+              <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-slate-200 rounded-md">
+                {offering.map(skill => (
+                  <Badge key={skill.id} variant="outline" className="pl-2 pr-1 py-1 text-xs gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-700">
+                    {skill.name}
+                    <button
+                      type="button"
+                      onClick={() => setOffering(offering.filter(s => s.id !== skill.id))}
+                      className="p-0.5 hover:bg-emerald-500/30 rounded-full transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-6 rounded-full border-dashed text-xs">
+                      <Plus className="w-3 h-3 mr-1" /> Add Skill
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-white text-slate-900 sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add a Skill</DialogTitle>
+                      <DialogDescription>What can you teach others?</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      {skills.filter(s => !offering.some(o => o.id === s.id)).map(skill => (
+                        <Button
+                          key={skill.id}
+                          type="button"
+                          variant="outline"
+                          className="justify-start text-sm"
+                          onClick={() => {
+                            setOffering([...offering, skill]);
+                            setIsOfferDialogOpen(false);
+                          }}
+                        >
+                          {skill.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>I Want to Learn</Label>
+              <div className="flex flex-wrap gap-2 min-h-[2.5rem] p-2 border border-slate-200 rounded-md">
+                {seeking.map(skill => (
+                  <Badge key={skill.id} variant="outline" className="pl-2 pr-1 py-1 text-xs gap-1 border-amber-500/30 bg-amber-500/10 text-amber-700">
+                    {skill.name}
+                    <button
+                      type="button"
+                      onClick={() => setSeeking(seeking.filter(s => s.id !== skill.id))}
+                      className="p-0.5 hover:bg-amber-500/30 rounded-full transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <Dialog open={isSeekDialogOpen} onOpenChange={setIsSeekDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-6 rounded-full border-dashed text-xs">
+                      <Plus className="w-3 h-3 mr-1" /> Add Interest
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-white text-slate-900 sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add an Interest</DialogTitle>
+                      <DialogDescription>What do you want to learn?</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      {skills.filter(s => !seeking.some(sk => sk.id === s.id)).map(skill => (
+                        <Button
+                          key={skill.id}
+                          type="button"
+                          variant="outline"
+                          className="justify-start text-sm"
+                          onClick={() => {
+                            setSeeking([...seeking, skill]);
+                            setIsSeekDialogOpen(false);
+                          }}
+                        >
+                          {skill.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </>

@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { User } from "./data";
+import { User, Skill } from "./data";
 import { MOCK_USERS } from "./mockData";
 
 export interface SignUpData {
@@ -8,6 +8,9 @@ export interface SignUpData {
   name: string;
   role: string;
   school: string;
+  avatar?: string;
+  offering?: Skill[];
+  seeking?: Skill[];
 }
 
 export const api = {
@@ -24,15 +27,17 @@ export const api = {
     if (authError) throw authError;
     if (!authData.user) throw new Error("Failed to create user");
 
-    // 2. Create profile
+    const userId = authData.user.id; // Store for type safety
+
+    // 2. Create profile with all fields
     const profile = {
-      id: authData.user.id,
+      id: userId,
       email: data.email,
       name: data.name,
       role: data.role,
       school: data.school,
       bio: `Hi, I'm ${data.name}!`,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${authData.user.id}`,
+      avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
     };
 
     const { error: profileError } = await supabase
@@ -41,7 +46,38 @@ export const api = {
 
     if (profileError) throw profileError;
 
-    return { profile: profile as User };
+    // 3. Create skills if provided
+    if (data.offering || data.seeking) {
+      const skillsToInsert = [
+        ...(data.offering || []).map(skill => ({
+          user_id: userId,
+          name: skill.name,
+          is_offering: true,
+        })),
+        ...(data.seeking || []).map(skill => ({
+          user_id: userId,
+          name: skill.name,
+          is_offering: false,
+        })),
+      ];
+
+      if (skillsToInsert.length > 0) {
+        const { error: skillsError } = await supabase
+          .from("skills")
+          .insert(skillsToInsert);
+
+        if (skillsError) throw skillsError;
+      }
+    }
+
+    // 4. Return complete profile with skills
+    return {
+      profile: {
+        ...profile,
+        offering: data.offering || [],
+        seeking: data.seeking || []
+      } as User
+    };
   },
 
   getProfile: async (): Promise<User | null> => {
