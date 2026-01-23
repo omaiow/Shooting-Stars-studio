@@ -115,10 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             avatar: profile.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
         });
 
-        if (profileError) throw profileError;
+        if (profileError) {
+            console.error('Profile creation error:', profileError);
+            throw profileError;
+        }
 
-        // Fetch the created profile
-        await fetchUserProfile(userId);
+        // Don't fetch profile here - let the auth state listener handle it
+        // This prevents the AbortError when the component unmounts/redirects
     };
 
     const signIn = async (email: string, password: string) => {
