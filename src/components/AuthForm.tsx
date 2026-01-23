@@ -13,7 +13,7 @@ import {
   DialogDescription,
 } from "./ui/dialog";
 import { supabase } from "../lib/supabase";
-import { useAuth } from "./AuthProvider";
+import { useAuth } from "../features/auth/hooks/useAuth";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff, ArrowLeft, Plus, X } from "lucide-react";
 import { skills, Skill } from "../lib/data";
@@ -60,7 +60,7 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
       const trimmedEmail = email.trim();
 
       if (mode === "login") {
-        await signIn(trimmedEmail, password);
+        await signIn({ email: trimmedEmail, password });
         onSuccess();
       } else if (mode === "signup") {
         // Validate skills

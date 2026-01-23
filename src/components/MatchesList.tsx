@@ -3,9 +3,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
 import { Phone, Video, MoreVertical, Loader2, Send } from "lucide-react";
-import { api } from "../lib/api";
+import { useMatches } from "../features/matching/hooks/useMatches";
 import { toast } from "sonner";
-import { User } from "../lib/data";
+import type { User } from "../shared/types/database";
 
 interface Message {
     id: string;
@@ -15,8 +15,8 @@ interface Message {
 }
 
 export function MatchesList({ initialMatchId }: { initialMatchId?: string }) {
+    const { matches: matchesData, loading, refetchMatches } = useMatches();
     const [matches, setMatches] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
     const [selectedMatch, setSelectedMatch] = useState<User | null>(null);
 
     // Chat state
@@ -25,8 +25,28 @@ export function MatchesList({ initialMatchId }: { initialMatchId?: string }) {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        loadMatches();
-    }, []);
+        refetchMatches();
+    }, [refetchMatches]);
+
+    useEffect(() => {
+        if (matchesData) {
+            // Extract the other user from each match
+            const users = matchesData.map(match => match.user1 || match.user2).filter(Boolean) as User[];
+            setMatches(users);
+
+            if (initialMatchId) {
+                const target = users.find(m => m.id === initialMatchId);
+                if (target) {
+                    setSelectedMatch(target);
+                    return;
+                }
+            }
+
+            if (users.length > 0 && !selectedMatch) {
+                setSelectedMatch(users[0]);
+            }
+        }
+    }, [matchesData, initialMatchId]);
 
     useEffect(() => {
         // Auto-scroll to bottom of chat
@@ -34,29 +54,6 @@ export function MatchesList({ initialMatchId }: { initialMatchId?: string }) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, selectedMatch]);
-
-    const loadMatches = async () => {
-        try {
-            const data = await api.getMatches();
-            setMatches(data);
-
-            if (initialMatchId) {
-                const target = data.find(m => m.id === initialMatchId);
-                if (target) {
-                    setSelectedMatch(target);
-                    return;
-                }
-            }
-
-            if (data.length > 0 && !selectedMatch) {
-                setSelectedMatch(data[0]);
-            }
-        } catch (e) {
-            toast.error("Failed to load matches");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     // When selected match changes, load their "mock" messages
     useEffect(() => {
@@ -194,8 +191,8 @@ export function MatchesList({ initialMatchId }: { initialMatchId?: string }) {
                                             className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
                                         >
                                             <div className={`max-w-[70%] px-4 py-2 rounded-2xl text-sm ${isMe
-                                                    ? "bg-blue-600 text-white rounded-tr-none"
-                                                    : "bg-slate-800 text-slate-200 rounded-tl-none"
+                                                ? "bg-blue-600 text-white rounded-tr-none"
+                                                : "bg-slate-800 text-slate-200 rounded-tl-none"
                                                 }`}>
                                                 {msg.text}
                                             </div>

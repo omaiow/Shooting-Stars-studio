@@ -15,13 +15,14 @@ import {
     DialogFooter
 } from "./ui/dialog";
 import { Plus, Loader2, Save, X, Camera } from "lucide-react";
-import { api } from "../lib/api";
+import { useAuth } from "../features/auth/hooks/useAuth";
+import { useProfile } from "../features/profile/hooks/useProfile";
 import { toast } from "sonner";
 import { skills, Skill } from "../lib/data";
-import { useAuth } from "./AuthProvider";
 
 export function ProfileView() {
-    const { profile: authProfile, refreshProfile } = useAuth();
+    const { user, refreshProfile } = useAuth();
+    const { updateProfile: updateProfileData, updateSkills: saveSkillsData } = useProfile();
     const [loading, setLoading] = useState(false);
     const [editing, setEditing] = useState(false);
 
@@ -41,20 +42,20 @@ export function ProfileView() {
     const [avatarUrlInput, setAvatarUrlInput] = useState("");
 
     useEffect(() => {
-        if (authProfile) {
-            setName(authProfile.name || "");
-            setRole(authProfile.role || "");
-            setSchool(authProfile.school || "");
-            setBio(authProfile.bio || "");
-            setOffering(authProfile.offering || []);
-            setSeeking(authProfile.seeking || []);
+        if (user) {
+            setName(user.name || "");
+            setRole(user.role || "");
+            setSchool(user.school || "");
+            setBio(user.bio || "");
+            setOffering(user.offering || []);
+            setSeeking(user.seeking || []);
         }
-    }, [authProfile]);
+    }, [user]);
 
     const handleSaveProfile = async () => {
         try {
             setLoading(true);
-            await api.updateProfile({ name, role, school, bio });
+            await updateProfileData({ name, role, school, bio });
             await refreshProfile();
             setEditing(false);
             toast.success("Profile updated");
@@ -82,7 +83,10 @@ export function ProfileView() {
             if (type === 'offering') setIsOfferDialogOpen(false);
             else setIsSeekDialogOpen(false);
 
-            await api.updateProfile({ [type]: newList });
+            await saveSkillsData(
+                type === 'offering' ? newList : offering,
+                type === 'seeking' ? newList : seeking
+            );
             await refreshProfile();
             toast.success(`${skill.name} added`);
         } catch (e) {
@@ -99,7 +103,10 @@ export function ProfileView() {
             if (type === 'offering') setOffering(newList);
             else setSeeking(newList);
 
-            await api.updateProfile({ [type]: newList });
+            await saveSkillsData(
+                type === 'offering' ? newList : offering,
+                type === 'seeking' ? newList : seeking
+            );
             await refreshProfile();
         } catch (e) {
             toast.error("Failed to remove skill");
@@ -110,7 +117,7 @@ export function ProfileView() {
         try {
             if (!avatarUrlInput.trim()) return;
             setAvatarLoading(true);
-            await api.updateProfile({ avatar: avatarUrlInput });
+            await updateProfileData({ avatar: avatarUrlInput });
             await refreshProfile();
             setIsAvatarDialogOpen(false);
             toast.success("Profile picture updated");
@@ -121,7 +128,7 @@ export function ProfileView() {
         }
     };
 
-    if (!authProfile) {
+    if (!user) {
         return (
             <div className="flex flex-col items-center justify-center p-8 min-h-[400px] space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-400" />

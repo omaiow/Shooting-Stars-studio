@@ -3,8 +3,8 @@ import { SwipeCard } from "./SwipeCard";
 import { Button } from "./ui/button";
 import { X, Check, MessageCircle, RefreshCw, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "../lib/api";
-import { User } from "../lib/data";
+import { useMatching } from "../features/matching/hooks/useMatching";
+import type { User } from "../shared/types/database";
 import {
   Carousel,
   CarouselContent,
@@ -15,14 +15,13 @@ import {
 } from "./ui/carousel";
 
 export function SkillMatcher({ isGuest, onRequireAuth, onMatchChat }: { isGuest?: boolean; onRequireAuth?: () => void, onMatchChat?: (id: string) => void }) {
-  const [candidates, setCandidates] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { candidates, currentCandidate, swipe: swipeAction, fetchCandidates, loading } = useMatching();
   const [apiRef, setApiRef] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
-    loadCandidates();
-  }, []);
+    fetchCandidates();
+  }, [fetchCandidates]);
 
   useEffect(() => {
     if (!apiRef) return;
@@ -32,37 +31,23 @@ export function SkillMatcher({ isGuest, onRequireAuth, onMatchChat }: { isGuest?
     });
   }, [apiRef]);
 
-  const loadCandidates = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getCandidates();
-      setCandidates(data);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load candidates");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAction = async (direction: "left" | "right") => {
-    // isGuest check removed as per new flow requiring auth
-
     const currentUser = candidates[current];
     if (!currentUser) return;
 
     // Advance carousel if possible
     if (apiRef?.canScrollNext()) {
       apiRef.scrollNext();
-    } else if (direction === "right") {
-      // If we are at the end and swipe right, maybe show success?
     }
 
     try {
-      const { isMatch } = await api.swipe(currentUser.id, direction);
+      const result = await swipeAction(currentUser.id, direction === 'right' ? 'like' : 'pass');
       if (direction === 'right') {
-        if (isMatch) {
+        if (result.matched) {
           toast.success(`It's a Match! You and ${currentUser.name} can now chat.`);
+          if (result.matchId && onMatchChat) {
+            onMatchChat(result.matchId);
+          }
         } else {
           toast.success(`Request sent to ${currentUser.name}`);
         }
@@ -95,7 +80,7 @@ export function SkillMatcher({ isGuest, onRequireAuth, onMatchChat }: { isGuest?
         </div>
         <div className="flex flex-col gap-3">
           <Button
-            onClick={loadCandidates}
+            onClick={fetchCandidates}
             variant="outline"
             className="border-slate-700 bg-slate-900/50 text-white hover:bg-slate-800 hover:text-white"
           >
@@ -105,14 +90,11 @@ export function SkillMatcher({ isGuest, onRequireAuth, onMatchChat }: { isGuest?
           <Button
             onClick={async () => {
               try {
-                setLoading(true);
-                await api.seed();
-                toast.success("Universe seeded & interactions reset!");
-                await loadCandidates();
+                // Seed function would need to be added to API if needed
+                toast.info("Seed feature needs backend implementation");
+                await fetchCandidates();
               } catch (e: any) {
-                toast.error(e.message || "Failed to seed universe");
-              } finally {
-                setLoading(false);
+                toast.error(e.message || "Failed to refresh");
               }
             }}
             variant="ghost"
@@ -143,8 +125,8 @@ export function SkillMatcher({ isGuest, onRequireAuth, onMatchChat }: { isGuest?
                   <SwipeCard
                     user={{
                       ...user,
-                      offering: user.offering || [],
-                      seeking: user.seeking || []
+                      offering: (user.offering || []) as any,
+                      seeking: (user.seeking || []) as any
                     }}
                     onSwipe={(dir) => handleAction(dir)}
                   />
@@ -175,10 +157,10 @@ export function SkillMatcher({ isGuest, onRequireAuth, onMatchChat }: { isGuest?
             if (!currentUser) return;
 
             try {
-              // "Message" implies strong interest -> Instant Match in Demo
-              const { isMatch } = await api.swipe(currentUser.id, 'right');
+              // "Message" implies strong interest -> Instant Match
+              const result = await swipeAction(currentUser.id, 'like');
 
-              if (isMatch) {
+              if (result.matched) {
                 toast.success(`Connected with ${currentUser.name}!`);
                 onMatchChat?.(currentUser.id);
               } else {
