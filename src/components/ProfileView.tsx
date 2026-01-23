@@ -156,7 +156,7 @@ export function ProfileView() {
             <div className="flex flex-col md:flex-row items-center gap-6">
                 <div className="relative group">
                     <div className="w-32 h-32 rounded-full bg-slate-800 overflow-hidden border-4 border-slate-700 shadow-xl shadow-black/30 relative">
-                        <img src={authProfile?.avatar} alt="Profile" className="w-full h-full object-cover" />
+                        <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
                         {avatarLoading && (
                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                 <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -168,7 +168,7 @@ export function ProfileView() {
                         variant="secondary"
                         className="absolute bottom-0 right-0 rounded-full h-10 w-10 shadow-lg border-2 border-slate-900 group-hover:scale-110 transition-transform bg-blue-600 hover:bg-blue-500 text-white border-slate-900"
                         onClick={() => {
-                            setAvatarUrlInput(authProfile?.avatar || "");
+                            setAvatarUrlInput(user?.avatar || "");
                             setIsAvatarDialogOpen(true);
                         }}
                         disabled={avatarLoading}

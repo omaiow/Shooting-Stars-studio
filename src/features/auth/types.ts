@@ -17,7 +17,7 @@ export interface SignInData {
 
 export interface AuthUser {
     id: string;
-    email: string;
+    email?: string;
 }
 
 export interface AuthSession {

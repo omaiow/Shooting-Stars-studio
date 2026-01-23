@@ -90,8 +90,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, [session]);
 
-
+    return (
+        <AuthContext.Provider
+            value={{
+                user,
+                session,
+                loading,
+                signUp,
+                signIn,
+                signOut,
+                refreshProfile,
+            }}
+        >
+            {children}
+        </AuthContext.Provider>
+    );
 }
+
 export function useAuth() {
     const context = useContext(AuthContext);
     if (context === undefined) {
