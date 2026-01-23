@@ -90,6 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             password,
             options: {
                 emailRedirectTo: window.location.origin,
+                data: {
+                    name: profile.name || 'New User',
+                    role: profile.role || '',
+                    school: profile.school || '',
+                }
             }
         });
 
@@ -98,30 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Check if email confirmation is required
         if (authData.session === null) {
-            // Email confirmation is required - don't create profile yet
             throw new Error('Please check your email to confirm your account before signing in.');
         }
 
-        const userId = authData.user.id;
-
-        // Create profile only if we have an active session (email confirmed or confirmation disabled)
-        const { error: profileError } = await supabase.from('profiles').insert({
-            id: userId,
-            email,
-            name: profile.name || 'New User',
-            role: profile.role || '',
-            school: profile.school || '',
-            bio: profile.bio || '',
-            avatar: profile.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
-        });
-
-        if (profileError) {
-            console.error('Profile creation error:', profileError);
-            throw profileError;
-        }
-
-        // Don't fetch profile here - let the auth state listener handle it
-        // This prevents the AbortError when the component unmounts/redirects
+        // Profile is created automatically by database trigger
+        // No need to manually insert - just wait for auth state to update
     };
 
     const signIn = async (email: string, password: string) => {
