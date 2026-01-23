@@ -88,14 +88,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email,
             password,
+            options: {
+                emailRedirectTo: window.location.origin,
+            }
         });
 
         if (authError) throw authError;
         if (!authData.user) throw new Error('Failed to create user');
 
+        // Check if email confirmation is required
+        if (authData.session === null) {
+            // Email confirmation is required - don't create profile yet
+            throw new Error('Please check your email to confirm your account before signing in.');
+        }
+
         const userId = authData.user.id;
 
-        // Create profile
+        // Create profile only if we have an active session (email confirmed or confirmation disabled)
         const { error: profileError } = await supabase.from('profiles').insert({
             id: userId,
             email,
