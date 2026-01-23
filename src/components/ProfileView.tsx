@@ -121,7 +121,22 @@ export function ProfileView() {
         }
     };
 
-    if (!authProfile) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-blue-400" /></div>;
+    if (!authProfile) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 min-h-[400px] space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <p className="text-slate-400">Loading profile...</p>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refreshProfile()}
+                    className="mt-4 border-slate-700 text-slate-400 hover:text-white"
+                >
+                    Retry
+                </Button>
+            </div>
+        );
+    }
 
     // Filter skills for dialogs (exclude already selected)
     const availableOffering = skills.filter(s => !offering.some(o => o.id === s.id));

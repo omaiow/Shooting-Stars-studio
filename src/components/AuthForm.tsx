@@ -6,7 +6,7 @@ import { Card } from "./ui/card";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "./AuthProvider";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 interface AuthFormProps {
   onSuccess: () => void;
@@ -15,7 +15,7 @@ interface AuthFormProps {
 type AuthMode = "login" | "signup" | "forgot-password";
 
 export function AuthForm({ onSuccess }: AuthFormProps) {
-  const { signUp, loginAsDemo } = useAuth();
+  const { signUp, signIn } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -35,16 +35,17 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
       const trimmedEmail = email.trim();
 
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: trimmedEmail,
-          password,
-        });
-        if (error) throw error;
+        await signIn(trimmedEmail, password);
         onSuccess();
       } else if (mode === "signup") {
-        // Sign Up via AuthProvider
+        // Show creating account message
+        toast.loading("Creating your account...", { id: "signup-loading" });
+
         await signUp({ email: trimmedEmail, password, name, role, school });
-        toast.success("Account created successfully!");
+
+        // Dismiss loading toast
+        toast.dismiss("signup-loading");
+
         onSuccess();
       } else if (mode === "forgot-password") {
         const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
@@ -55,6 +56,9 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
         setMode("login");
       }
     } catch (error: any) {
+      // Dismiss any loading toasts
+      toast.dismiss("signup-loading");
+
       const msg = error.message || error.toString();
 
       if (!msg.includes("Invalid login credentials") && !msg.includes("User already registered") && !msg.includes("unique constraint")) {
@@ -62,12 +66,12 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
       }
 
       if (msg.includes("Invalid login credentials")) {
-        toast.error("Wrong password");
+        toast.error("Invalid email or password");
       } else if (msg.includes("User already registered") || msg.includes("unique constraint")) {
         toast.error("Account already exists. Please log in.");
         setMode("login");
       } else {
-        toast.error(msg);
+        toast.error(msg || "Authentication failed");
       }
     } finally {
       setLoading(false);
@@ -101,8 +105,8 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
           </div>
         )}
         <div className="flex justify-center mb-4">
-          <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center">
-            <Sparkles className="w-7 h-7 text-white" />
+          <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-2xl">
+            ⭐
           </div>
         </div>
         <h2 className="text-2xl font-bold">{getTitle()}</h2>
@@ -178,41 +182,15 @@ export function AuthForm({ onSuccess }: AuthFormProps) {
       </form>
 
       {mode !== "forgot-password" && (
-        <>
-          <div className="text-center my-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-slate-200"></span>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-slate-500">Or</span>
-              </div>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-            onClick={() => {
-              loginAsDemo();
-              onSuccess();
-            }}
+        <div className="mt-6 text-center text-sm">
+          <span className="text-slate-500">{mode === "login" ? "New here? " : "Already have an account? "}</span>
+          <button
+            onClick={() => setMode(mode === "login" ? "signup" : "login")}
+            className="font-semibold text-blue-600 hover:underline"
           >
-            <Sparkles className="w-4 h-4 mr-2 text-blue-500" />
-            Try Demo Account
-          </Button>
-
-          <div className="mt-6 text-center text-sm">
-            <span className="text-slate-500">{mode === "login" ? "New here? " : "Already have an account? "}</span>
-            <button
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
-              className="font-semibold text-blue-600 hover:underline"
-            >
-              {mode === "login" ? "Create Account" : "Login"}
-            </button>
-          </div>
-        </>
+            {mode === "login" ? "Create Account" : "Login"}
+          </button>
+        </div>
       )}
     </Card>
   );

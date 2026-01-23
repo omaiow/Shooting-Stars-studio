@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { LandingPage } from "./components/LandingPage";
 import { DashboardLayout } from "./components/DashboardLayout";
 import { SkillMatcher } from "./components/SkillMatcher";
 import { MatchesList } from "./components/MatchesList";
@@ -9,18 +8,16 @@ import { Toaster } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
-import { supabase } from "./lib/supabase";
 
 function AppContent() {
   const { session, loading: authLoading, signOut } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
-  const [isBrowsing, setIsBrowsing] = useState(false);
   const [activeTab, setActiveTab] = useState<"discover" | "matches" | "profile">("discover");
   const [targetMatchId, setTargetMatchId] = useState<string | undefined>(undefined);
 
   const handleNavigateToChat = (matchId: string) => {
-      setTargetMatchId(matchId);
-      setActiveTab("matches");
+    setTargetMatchId(matchId);
+    setActiveTab("matches");
   };
 
   if (authLoading) {
@@ -31,66 +28,52 @@ function AppContent() {
     );
   }
 
-  // Auth Modal/Page - Only show if specifically requested or if browsing as guest requiring auth
-  // But wait, if !session and !isBrowsing, we show LandingPage.
-  // If user clicks "Sign In" on LandingPage, we probably want to show Auth.
-  
-  if (showAuth) {
+  // Show auth form if requested or if not authenticated
+  if (showAuth || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#020817] p-4 relative overflow-hidden">
-           {/* Background Decoration */}
-           <div className="absolute inset-0 z-0">
-              <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob"></div>
-              <div className="absolute top-0 -right-4 w-72 h-72 bg-cyan-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-              <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-           </div>
-           
-           <div className="z-10 w-full flex flex-col items-center">
-              <AuthForm onSuccess={() => setShowAuth(false)} />
-              <button 
-                  onClick={() => setShowAuth(false)} 
-                  className="mt-8 text-slate-400 hover:text-white text-sm transition-colors flex items-center gap-2 group"
-              >
-                  <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Home
-              </button>
-           </div>
-           <Toaster />
+        {/* Background Decoration */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob"></div>
+          <div className="absolute top-0 -right-4 w-72 h-72 bg-cyan-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        </div>
+
+        <div className="z-10 w-full flex flex-col items-center">
+          <AuthForm onSuccess={() => setShowAuth(false)} />
+          {session && (
+            <button
+              onClick={() => setShowAuth(false)}
+              className="mt-8 text-slate-400 hover:text-white text-sm transition-colors flex items-center gap-2 group"
+            >
+              <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to App
+            </button>
+          )}
+        </div>
+        <Toaster />
       </div>
     );
   }
 
-  // Not browsing -> Landing Page
-  if (!session && !isBrowsing) {
-    return (
-        <>
-            <LandingPage onEnter={() => setShowAuth(true)} />
-            <Toaster />
-        </>
-    );
-  }
-
-  // Main App (Authenticated OR Guest Browsing)
+  // Main App (Authenticated users only)
   return (
     <TooltipProvider>
-      <DashboardLayout 
-        activeTab={activeTab} 
+      <DashboardLayout
+        activeTab={activeTab}
         onTabChange={setActiveTab}
         onLogout={() => {
-            if (session) {
-                signOut();
-            }
-            setIsBrowsing(false);
-            setActiveTab("discover");
-            setShowAuth(false);
+          signOut();
+          setActiveTab("discover");
+          setShowAuth(false);
         }}
-        isGuest={!session}
+        isGuest={false}
         onRequireAuth={() => setShowAuth(true)}
       >
         {activeTab === "discover" && (
-            <SkillMatcher 
-                isGuest={false} 
-                onMatchChat={handleNavigateToChat}
-            />
+          <SkillMatcher
+            isGuest={false}
+            onMatchChat={handleNavigateToChat}
+          />
         )}
         {activeTab === "matches" && <MatchesList initialMatchId={targetMatchId} />}
         {activeTab === "profile" && <ProfileView />}
@@ -101,9 +84,9 @@ function AppContent() {
 }
 
 export default function App() {
-    return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
-    );
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 }
