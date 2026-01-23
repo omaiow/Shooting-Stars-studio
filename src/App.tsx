@@ -1,103 +1,54 @@
-import { Loader2 } from "lucide-react";
-import { useState } from "react";
-import { AuthProvider, useAuth } from "./features/auth/hooks/useAuth";
-import { LandingPage } from "./components/LandingPage";
-import { AuthForm } from "./components/AuthForm";
-import { DashboardLayout } from "./components/DashboardLayout";
-import { SkillMatcher } from "./components/SkillMatcher";
-import { MatchesList } from "./components/MatchesList";
-import { ProfileView } from "./components/ProfileView";
-import { Toaster } from "./components/ui/sonner";
-import { TooltipProvider } from "./components/ui/tooltip";
+// App.tsx - Main Application
+import { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
+import { Landing } from './pages/Landing';
+import { Auth } from './pages/Auth';
+import { Dashboard } from './pages/Dashboard';
+import { Simulation } from './pages/Simulation';
 
-function AppContent() {
-    const { user, session, loading } = useAuth();
-    const [showAuth, setShowAuth] = useState(false);
-    const [activeTab, setActiveTab] = useState<"discover" | "matches" | "profile">("discover");
-    const [targetMatchId, setTargetMatchId] = useState<string | undefined>(undefined);
+type View = 'landing' | 'auth' | 'dashboard' | 'simulation';
 
-    const handleNavigateToChat = (matchId: string) => {
-        setTargetMatchId(matchId);
-        setActiveTab("matches");
-    };
+function App() {
+    const { user, loading } = useAuth();
+    const [view, setView] = useState<View>('landing');
 
-    // Loading state
+    // Debug backdoor for simulation
+    useEffect(() => {
+        if (window.location.hash === '#sim') {
+            setView('simulation');
+        }
+    }, []);
+
+    // Show loading spinner while checking auth
     if (loading) {
         return (
-            <div className="h-screen w-screen flex items-center justify-center bg-[#020817]">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            <div className="min-h-screen flex items-center justify-center bg-black">
+                <div className="spinner border-zinc-500 border-t-white" />
             </div>
         );
     }
 
-    // Show auth form if specifically requested
-    if (showAuth) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[#020817] p-4 relative overflow-hidden">
-                {/* Background Decoration */}
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob"></div>
-                    <div className="absolute top-0 -right-4 w-72 h-72 bg-cyan-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-                    <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-900 rounded-full mix-blend-screen filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-                </div>
+    // Simulation Viewer (Accessible via #sim or manual toggle)
+    if (view === 'simulation') {
+        return <Simulation />;
+    }
 
-                <div className="z-10 w-full flex flex-col items-center">
-                    <AuthForm onSuccess={() => setShowAuth(false)} />
-                    <button
-                        onClick={() => setShowAuth(false)}
-                        className="mt-8 text-slate-400 hover:text-white text-sm transition-colors flex items-center gap-2 group"
-                    >
-                        <span className="group-hover:-translate-x-1 transition-transform">←</span> Back to Home
-                    </button>
-                </div>
-                <Toaster />
-            </div>
+    // If user is logged in, show dashboard
+    if (user) {
+        return <Dashboard />;
+    }
+
+    // Otherwise show landing or auth based on view state
+    if (view === 'auth') {
+        return (
+            <Auth
+                onBack={() => setView('landing')}
+                onSuccess={() => { }} // Auth state change will handle redirect
+            />
         );
     }
 
-    // Show landing page if not authenticated
-    if (!session) {
-        return (
-            <>
-                <LandingPage onEnter={() => setShowAuth(true)} />
-                <Toaster />
-            </>
-        );
-    }
-
-    // Main app for authenticated users
-    return (
-        <TooltipProvider>
-            <DashboardLayout
-                activeTab={activeTab}
-                onTabChange={setActiveTab}
-                onLogout={async () => {
-                    const { signOut } = useAuth();
-                    await signOut();
-                    setActiveTab("discover");
-                    setShowAuth(false);
-                }}
-                isGuest={false}
-                onRequireAuth={() => setShowAuth(true)}
-            >
-                {activeTab === "discover" && (
-                    <SkillMatcher
-                        isGuest={false}
-                        onMatchChat={handleNavigateToChat}
-                    />
-                )}
-                {activeTab === "matches" && <MatchesList initialMatchId={targetMatchId} />}
-                {activeTab === "profile" && <ProfileView />}
-            </DashboardLayout>
-            <Toaster />
-        </TooltipProvider>
-    );
+    return <Landing onEnter={() => setView('auth')} />;
 }
 
-export default function App() {
-    return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
-    );
-}
+export default App;
