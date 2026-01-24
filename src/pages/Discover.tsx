@@ -1,232 +1,248 @@
-// Discover Page - Swipe through users
+// Discover Page - Swipe through simulated users with Tinder-like animations
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+import { useSimulation } from '../context/SimulationContext';
 import type { User } from '../lib/types';
-import { X, Heart, Sparkles, PartyPopper } from 'lucide-react';
+import { X, Heart, Sparkles, PartyPopper, RefreshCw, ArrowRight, ArrowLeft } from 'lucide-react';
+import { motion, useMotionValue, useTransform, useAnimation, PanInfo } from 'motion/react';
 
 export function Discover() {
-    const { user: currentUser } = useAuth();
+    const { currentUser, getCandidates, recordSwipe, matchProbability, stats } = useSimulation();
     const [candidates, setCandidates] = useState<User[]>([]);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [loading, setLoading] = useState(true);
     const [matchPopup, setMatchPopup] = useState<User | null>(null);
+
+    // Maintain a small buffer of cards to render (Current + Next)
+    // We reverse the array for display so the 0-index is on top
+    const [displayIndex, setDisplayIndex] = useState(0);
 
     useEffect(() => {
         loadCandidates();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser]);
 
-    const loadCandidates = async () => {
-        if (!currentUser) return;
-
-        try {
-            setLoading(true);
-
-            // Get users already swiped
-            const { data: swipes } = await supabase
-                .from('swipes')
-                .select('target_user_id')
-                .eq('user_id', currentUser.id);
-
-            const swipedIds = (swipes || []).map(s => s.target_user_id);
-
-            // Get profiles excluding current user and swiped users
-            let query = supabase
-                .from('profiles')
-                .select('*')
-                .neq('id', currentUser.id)
-                .limit(20);
-
-            if (swipedIds.length > 0) {
-                query = query.not('id', 'in', `(${swipedIds.join(',')})`);
-            }
-
-            const { data: profiles } = await query;
-
-            // Get skills for each profile
-            const usersWithSkills = await Promise.all(
-                (profiles || []).map(async (profile) => {
-                    const { data: skills } = await supabase
-                        .from('skills')
-                        .select('*')
-                        .eq('user_id', profile.id);
-
-                    return {
-                        ...profile,
-                        offering: (skills || []).filter(s => s.is_offering).map(s => ({ id: s.id, name: s.name })),
-                        seeking: (skills || []).filter(s => !s.is_offering).map(s => ({ id: s.id, name: s.name })),
-                    };
-                })
-            );
-
-            setCandidates(usersWithSkills);
-        } catch (error) {
-            console.error('Error loading candidates:', error);
-        } finally {
-            setLoading(false);
-        }
+    const loadCandidates = () => {
+        const newCandidates = getCandidates(currentUser.id);
+        setCandidates(newCandidates);
+        setDisplayIndex(0);
     };
 
     const handleSwipe = async (action: 'like' | 'pass') => {
-        if (!currentUser || currentIndex >= candidates.length) return;
+        if (displayIndex >= candidates.length) return;
 
-        const target = candidates[currentIndex];
+        const target = candidates[displayIndex];
+        recordSwipe(target.id, action);
 
-        try {
-            // Record swipe
-            await supabase.from('swipes').insert({
-                user_id: currentUser.id,
-                target_user_id: target.id,
-                action,
-            });
-
-            // Check for mutual like
-            if (action === 'like') {
-                const { data: mutualLike } = await supabase
-                    .from('swipes')
-                    .select('*')
-                    .eq('user_id', target.id)
-                    .eq('target_user_id', currentUser.id)
-                    .eq('action', 'like')
-                    .single();
-
-                if (mutualLike) {
-                    // Create match
-                    await supabase.from('matches').insert({
-                        user1_id: currentUser.id,
-                        user2_id: target.id,
-                        status: 'accepted',
-                    });
-
-                    setMatchPopup(target);
-                }
-            }
-
-            setCurrentIndex(prev => prev + 1);
-        } catch (error) {
-            console.error('Swipe error:', error);
+        if (action === 'like' && Math.random() < matchProbability) {
+            setMatchPopup(target);
         }
+
+        setDisplayIndex(prev => prev + 1);
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <div className="spinner border-zinc-800 border-t-white" />
-            </div>
-        );
-    }
+    const activeCandidate = candidates[displayIndex];
+    const nextCandidate = candidates[displayIndex + 1];
 
-    const currentCandidate = candidates[currentIndex];
-
-    if (!currentCandidate) {
+    if (!activeCandidate) {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <Sparkles className="w-16 h-16 mb-4 text-zinc-600" />
-                <h2 className="text-2xl font-bold mb-2">No More Profiles</h2>
-                <p className="text-zinc-500 mb-6">You've seen everyone! Check back later for new users.</p>
-                <button onClick={loadCandidates} className="btn btn-primary bg-white text-black hover:bg-zinc-200 border-white">
-                    Refresh
+            <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-zinc-950/50 backdrop-blur-sm border border-white/10 max-w-md mx-auto aspect-[3/4.5]">
+                <div className="bg-zinc-900 p-6 mb-6 border border-white/10 relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                    <Sparkles className="w-12 h-12 text-white" />
+                </div>
+                <h2 className="text-2xl font-black mb-2 text-white uppercase tracking-tighter">Queue Empty</h2>
+                <p className="text-zinc-500 mb-8 max-w-xs mx-auto font-mono text-xs">
+                    // USER_POOL_EXHAUSTED<br />
+                    // GENERATE_MORE_AGENTS
+                </p>
+                <button
+                    onClick={loadCandidates}
+                    className="group relative px-8 py-3 bg-white text-black font-bold uppercase tracking-widest text-xs hover:bg-zinc-200 transition-colors"
+                >
+                    <span className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4" /> Refresh Feed
+                    </span>
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col items-center justify-center h-full p-4 relative">
+        <div className="relative h-full w-full flex flex-col items-center justify-center">
+            {/* Simulation Info Badge */}
+            <div className="absolute top-0 right-0 p-4 z-10">
+                <div className="bg-black/50 backdrop-blur border border-white/10 px-3 py-1 text-[10px] font-mono text-zinc-400 uppercase">
+                    Swipes: {stats.totalSwipes}
+                </div>
+            </div>
+
+            {/* Card Area */}
+            <div className="relative w-full max-w-md aspect-[3/4.5] bg-zinc-900/20 border border-white/5">
+                {/* Background Card (Next Profile) */}
+                {nextCandidate && (
+                    <div className="absolute inset-0 z-0 transform scale-[0.98] translate-y-2 opacity-50 pointer-events-none grayscale">
+                        <ProfileCard user={nextCandidate} />
+                    </div>
+                )}
+
+                {/* Active Draggable Card */}
+                <div className="absolute inset-0 z-10 cursor-grab active:cursor-grabbing shadow-2xl">
+                    <DraggableCard
+                        key={activeCandidate.id}
+                        user={activeCandidate}
+                        onSwipe={handleSwipe}
+                    />
+                </div>
+            </div>
+
+            {/* Controls (Desktop Visual Aid) */}
+            <div className="absolute bottom-8 flex gap-4 z-0 opacity-50 pointer-events-none">
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase text-zinc-500">
+                    <ArrowLeft className="w-3 h-3" /> Drag Left to Pass
+                </div>
+                <div className="w-px h-3 bg-white/10" />
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase text-zinc-500">
+                    Drag Right to Like <ArrowRight className="w-3 h-3" />
+                </div>
+            </div>
+
             {/* Match Popup */}
             {matchPopup && (
-                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="card text-center max-w-sm w-full bg-zinc-950 border-zinc-800">
-                        <div className="flex justify-center mb-4">
+                <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-6 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="text-center w-full max-w-md border border-white/20 bg-zinc-950 p-8 shadow-2xl relative">
+                        {/* Decorative corners */}
+                        <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-white" />
+                        <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-white" />
+                        <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-white" />
+                        <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-white" />
+
+                        <div className="flex justify-center mb-6">
                             <PartyPopper className="w-16 h-16 text-white" />
                         </div>
-                        <h2 className="text-2xl font-bold mb-2 text-white">It's a Match!</h2>
-                        <p className="text-zinc-400 mb-6">
-                            You and {matchPopup.name} liked each other!
+
+                        <h2 className="text-5xl font-black mb-2 text-white italic tracking-tighter uppercase p-2 border-y-2 border-white inline-block">
+                            MATCHED
+                        </h2>
+
+                        <p className="text-zinc-400 mb-8 mt-4 font-mono text-sm">
+                            CONNECTION_ESTABLISHED::<span className="text-white font-bold">{matchPopup.name}</span>
                         </p>
+
+                        <div className="flex items-center justify-center gap-8 mb-8">
+                            <img src={currentUser.avatar || ''} className="w-20 h-20 bg-zinc-800 border-2 border-white object-cover grayscale opacity-80" />
+                            <div className="w-8 h-px bg-white/50" />
+                            <img src={matchPopup.avatar || ''} className="w-20 h-20 bg-zinc-800 border-2 border-white object-cover" />
+                        </div>
+
                         <button
                             onClick={() => setMatchPopup(null)}
-                            className="btn btn-primary w-full bg-white text-black hover:bg-zinc-200 border-white"
+                            className="w-full py-4 bg-white text-black font-bold uppercase tracking-widest hover:bg-zinc-200 transition-colors"
                         >
-                            Keep Swiping
+                            Continue Browsing
                         </button>
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
 
-            {/* Profile Card */}
-            <div className="card w-full max-w-md bg-zinc-900/50 border-zinc-800">
-                {/* Avatar */}
-                <div className="flex justify-center mb-4">
-                    <img
-                        src={currentCandidate.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentCandidate.id}`}
-                        alt={currentCandidate.name}
-                        className="w-32 h-32 rounded-full object-cover border-4 border-zinc-800 bg-zinc-800"
-                    />
-                </div>
+// Draggable Logic
+function DraggableCard({ user, onSwipe }: { user: User; onSwipe: (action: 'like' | 'pass') => void }) {
+    const x = useMotionValue(0);
+    const rotate = useTransform(x, [-200, 200], [-5, 5]); // reduced rotation for stiffer feel
+    const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 0.5, 1, 0.5, 0]);
 
-                {/* Info */}
-                <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-white">{currentCandidate.name}</h2>
-                    <p className="text-zinc-400">
-                        {currentCandidate.role}{currentCandidate.school ? ` at ${currentCandidate.school}` : ''}
-                    </p>
-                    {currentCandidate.bio && (
-                        <p className="text-zinc-300 text-sm mt-3">{currentCandidate.bio}</p>
-                    )}
-                </div>
+    // Status Labels
+    const likeOpacity = useTransform(x, [20, 100], [0, 1]);
+    const passOpacity = useTransform(x, [-20, -100], [0, 1]);
 
-                {/* Skills */}
-                <div className="space-y-4 mb-6">
-                    {currentCandidate.offering.length > 0 && (
-                        <div>
-                            <p className="text-xs text-zinc-500 uppercase tracking-wide mb-2">Can Offer</p>
-                            <div className="flex flex-wrap gap-2">
-                                {currentCandidate.offering.map(skill => (
-                                    <span key={skill.id} className="badge badge-offering border-zinc-700 bg-zinc-800/50 text-zinc-300">
-                                        {skill.name}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+    const controls = useAnimation();
 
-                    {currentCandidate.seeking.length > 0 && (
-                        <div>
-                            <p className="text-xs text-zinc-500 uppercase tracking-wide mb-2">Looking For</p>
-                            <div className="flex flex-wrap gap-2">
-                                {currentCandidate.seeking.map(skill => (
-                                    <span key={skill.id} className="badge badge-seeking border-zinc-700 bg-zinc-800/50 text-zinc-400">
-                                        {skill.name}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
+    const handleDragEnd = async (_: unknown, info: PanInfo) => {
+        const offset = info.offset.x;
+        const velocity = info.velocity.x;
 
-                {/* Action Buttons */}
-                <div className="flex gap-4">
-                    <button
-                        onClick={() => handleSwipe('pass')}
-                        className="btn btn-danger flex-1 py-4 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white hover:border-zinc-600 transition-colors"
-                    >
-                        <X className="w-6 h-6" />
-                    </button>
-                    <button
-                        onClick={() => handleSwipe('like')}
-                        className="btn btn-success flex-1 py-4 border-white text-white hover:bg-white hover:text-black transition-colors"
-                    >
-                        <Heart className="w-6 h-6" />
-                    </button>
-                </div>
+        if (offset > 100 || velocity > 500) {
+            await controls.start({ x: 500, opacity: 0, transition: { duration: 0.2 } });
+            onSwipe('like');
+        } else if (offset < -100 || velocity < -500) {
+            await controls.start({ x: -500, opacity: 0, transition: { duration: 0.2 } });
+            onSwipe('pass');
+        } else {
+            controls.start({ x: 0, rotate: 0, transition: { type: 'spring', stiffness: 500, damping: 50 } });
+        }
+    };
+
+    return (
+        <motion.div
+            style={{ x, rotate, opacity }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            onDragEnd={handleDragEnd}
+            animate={controls}
+            className="w-full h-full relative"
+        >
+            {/* LIKE OVERLAY */}
+            <motion.div style={{ opacity: likeOpacity }} className="absolute top-6 left-6 z-30 border-4 border-white bg-black/50 px-4 py-2 transform -rotate-6">
+                <span className="text-4xl font-black text-white uppercase tracking-widest">LIKE</span>
+            </motion.div>
+
+            {/* PASS OVERLAY */}
+            <motion.div style={{ opacity: passOpacity }} className="absolute top-6 right-6 z-30 border-4 border-zinc-500 bg-black/50 px-4 py-2 transform rotate-6">
+                <span className="text-4xl font-black text-zinc-500 uppercase tracking-widest">PASS</span>
+            </motion.div>
+
+            <ProfileCard user={user} />
+        </motion.div>
+    );
+}
+
+// Card Presentation
+function ProfileCard({ user }: { user: User }) {
+    return (
+        <div className="w-full h-full bg-zinc-900 border border-white/20 overflow-hidden relative select-none flex flex-col group">
+            {/* Image Area */}
+            <div className="relative flex-1 bg-zinc-800 overflow-hidden">
+                <div className="absolute inset-0 bg-zinc-900/20 z-10 group-hover:bg-transparent transition-colors duration-500" />
+                <img
+                    src={user.avatar || ''}
+                    alt={user.name}
+                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                    draggable={false}
+                />
             </div>
 
-            {/* Progress indicator */}
-            <p className="text-zinc-600 text-sm mt-4">
-                {currentIndex + 1} of {candidates.length}
-            </p>
+            {/* Data Footer */}
+            <div className="bg-black border-t border-white/20 p-6 relative">
+                {/* Decorative Corner */}
+                <div className="absolute top-0 right-0 w-4 h-4 border-b border-l border-white/20" />
+
+                <div className="mb-4">
+                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none mb-1">
+                        {user.name}
+                    </h2>
+                    <div className="flex items-center gap-2 text-zinc-500 font-mono text-xs uppercase">
+                        <span className="text-white font-bold">{user.role}</span>
+                        <span>//</span>
+                        <span>{user.school || 'INDEPENDENT'}</span>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Looking For */}
+                    {user.seeking?.length > 0 && (
+                        <div>
+                            <p className="text-[10px] font-mono text-zinc-600 uppercase mb-1">Targeting_Skills:</p>
+                            <div className="flex flex-wrap gap-1">
+                                {user.seeking.slice(0, 3).map(skill => (
+                                    <span key={skill.id} className="px-2 py-0.5 border border-white/20 text-white text-[10px] font-mono uppercase bg-white/5">
+                                        {skill.name}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

@@ -1,9 +1,8 @@
-// Profile Page - View and edit profile
+// Profile Page - View and edit current simulation user
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+import { useSimulation } from '../context/SimulationContext';
 import type { Skill } from '../lib/types';
-import { Plus, X, LogOut, Edit2, Save, User as UserIcon, BookOpen, Briefcase, GraduationCap } from 'lucide-react';
+import { Plus, X, Edit2, Save, User as UserIcon, BookOpen, Briefcase, GraduationCap } from 'lucide-react';
 
 // Available skills to choose from
 const AVAILABLE_SKILLS = [
@@ -16,9 +15,8 @@ const AVAILABLE_SKILLS = [
 ];
 
 export function Profile() {
-    const { user, signOut } = useAuth();
+    const { currentUser, updateUser } = useSimulation();
     const [editing, setEditing] = useState(false);
-    const [saving, setSaving] = useState(false);
 
     // Form state
     const [name, setName] = useState('');
@@ -33,85 +31,46 @@ export function Profile() {
     const [showSeekingPicker, setShowSeekingPicker] = useState(false);
 
     useEffect(() => {
-        if (user) {
-            setName(user.name || '');
-            setRole(user.role || '');
-            setSchool(user.school || '');
-            setBio(user.bio || '');
-            setOffering(user.offering || []);
-            setSeeking(user.seeking || []);
+        if (currentUser) {
+            setName(currentUser.name || '');
+            setRole(currentUser.role || '');
+            setSchool(currentUser.school || '');
+            setBio(currentUser.bio || '');
+            setOffering(currentUser.offering || []);
+            setSeeking(currentUser.seeking || []);
         }
-    }, [user]);
+    }, [currentUser]);
 
-    const handleSave = async () => {
-        if (!user) return;
-
-        try {
-            setSaving(true);
-
-            // Update profile
-            await supabase
-                .from('profiles')
-                .update({ name, role, school, bio })
-                .eq('id', user.id);
-
-            setEditing(false);
-        } catch (error) {
-            console.error('Error saving profile:', error);
-        } finally {
-            setSaving(false);
-        }
+    const handleSave = () => {
+        updateUser(currentUser.id, { name, role, school, bio, offering, seeking });
+        setEditing(false);
     };
 
-    const addSkill = async (skillName: string, type: 'offering' | 'seeking') => {
-        if (!user) return;
-
+    const addSkill = (skillName: string, type: 'offering' | 'seeking') => {
         const existing = type === 'offering' ? offering : seeking;
         if (existing.some(s => s.name === skillName)) return;
 
-        try {
-            const { data, error } = await supabase
-                .from('skills')
-                .insert({
-                    user_id: user.id,
-                    name: skillName,
-                    is_offering: type === 'offering',
-                })
-                .select()
-                .single();
+        const newSkill = { id: `skill-${Date.now()}`, name: skillName };
 
-            if (error) throw error;
-
-            const newSkill = { id: data.id, name: data.name };
-
-            if (type === 'offering') {
-                setOffering(prev => [...prev, newSkill]);
-            } else {
-                setSeeking(prev => [...prev, newSkill]);
-            }
-        } catch (error) {
-            console.error('Error adding skill:', error);
+        if (type === 'offering') {
+            setOffering(prev => [...prev, newSkill]);
+        } else {
+            setSeeking(prev => [...prev, newSkill]);
         }
 
         setShowOfferingPicker(false);
         setShowSeekingPicker(false);
     };
 
-    const removeSkill = async (skillId: string, type: 'offering' | 'seeking') => {
-        try {
-            await supabase.from('skills').delete().eq('id', skillId);
-
-            if (type === 'offering') {
-                setOffering(prev => prev.filter(s => s.id !== skillId));
-            } else {
-                setSeeking(prev => prev.filter(s => s.id !== skillId));
-            }
-        } catch (error) {
-            console.error('Error removing skill:', error);
+    const removeSkill = (skillId: string, type: 'offering' | 'seeking') => {
+        if (type === 'offering') {
+            setOffering(prev => prev.filter(s => s.id !== skillId));
+        } else {
+            setSeeking(prev => prev.filter(s => s.id !== skillId));
         }
     };
 
-    if (!user) {
+    if (!currentUser) {
         return (
             <div className="flex items-center justify-center h-full">
                 <div className="spinner border-zinc-500 border-t-white" />
@@ -124,8 +83,8 @@ export function Profile() {
             {/* Profile Header */}
             <div className="flex items-start gap-6 mb-8">
                 <img
-                    src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`}
-                    alt={user.name}
+                    src={currentUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.id}`}
+                    alt={currentUser.name}
                     className="w-24 h-24 rounded-full border border-zinc-700 bg-zinc-800 object-cover"
                 />
                 <div className="flex-1 pt-1">
@@ -163,10 +122,10 @@ export function Profile() {
                         </div>
                     ) : (
                         <div>
-                            <h1 className="text-2xl font-bold mb-1 text-white">{user.name}</h1>
+                            <h1 className="text-2xl font-bold mb-1 text-white">{currentUser.name}</h1>
                             <p className="text-zinc-400 flex items-center gap-2 text-sm">
-                                {user.role && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {user.role}</span>}
-                                {user.school && <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3" /> {user.school}</span>}
+                                {currentUser.role && <span className="flex items-center gap-1"><Briefcase className="w-3 h-3" /> {currentUser.role}</span>}
+                                {currentUser.school && <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3" /> {currentUser.school}</span>}
                             </p>
                         </div>
                     )}
@@ -177,9 +136,9 @@ export function Profile() {
                         <button onClick={() => setEditing(false)} className="btn btn-secondary border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500">
                             Cancel
                         </button>
-                        <button onClick={handleSave} className="btn btn-primary bg-white text-black hover:bg-zinc-200 border-white flex items-center gap-2" disabled={saving}>
+                        <button onClick={handleSave} className="btn btn-primary bg-white text-black hover:bg-zinc-200 border-white flex items-center gap-2">
                             <Save className="w-4 h-4" />
-                            {saving ? 'Saving...' : 'Save'}
+                            Save
                         </button>
                     </div>
                 ) : (
@@ -205,7 +164,7 @@ export function Profile() {
                     />
                 ) : (
                     <p className="text-zinc-400 leading-relaxed text-sm">
-                        {user.bio || 'No bio yet. Click Edit to add one!'}
+                        {currentUser.bio || 'No bio yet. Click Edit to add one!'}
                     </p>
                 )}
             </div>
@@ -304,22 +263,15 @@ export function Profile() {
                 )}
             </div>
 
-            {/* Account Section */}
-            <div className="card border-zinc-800 bg-zinc-900/30">
-                <div className="flex items-center gap-2 mb-3">
-                    <UserIcon className="w-4 h-4 text-zinc-500" />
-                    <h3 className="font-semibold text-zinc-200">Account</h3>
+            {/* Simulation Info */}
+            <div className="card border-blue-600/50 bg-blue-600/10">
+                <div className="flex items-center gap-2 mb-2">
+                    <UserIcon className="w-4 h-4 text-blue-400" />
+                    <h3 className="font-semibold text-blue-200">Simulation User</h3>
                 </div>
-                <div className="flex items-center justify-between">
-                    <p className="text-zinc-500 text-sm">{user.email}</p>
-                    <button
-                        onClick={signOut}
-                        className="btn btn-danger text-sm py-1.5 px-4 flex items-center gap-2 border-red-900/50 text-red-500 hover:bg-red-950/20"
-                    >
-                        <LogOut className="w-3 h-3" />
-                        Sign Out
-                    </button>
-                </div>
+                <p className="text-blue-300 text-sm">
+                    You're viewing and editing a simulated user profile. Changes persist during this simulation session only.
+                </p>
             </div>
         </div>
     );

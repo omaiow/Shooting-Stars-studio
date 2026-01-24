@@ -1,4 +1,15 @@
-import { skills } from "./data";
+import { Code, PenTool, Camera, BookOpen, Music, Video, Megaphone, Smartphone } from "lucide-react";
+
+export const skills = [
+  { id: "1", name: "Web Development", icon: Code, category: "Tech" },
+  { id: "2", name: "Graphic Design", icon: PenTool, category: "Creative" },
+  { id: "3", name: "Photography", icon: Camera, category: "Creative" },
+  { id: "4", name: "Content Writing", icon: BookOpen, category: "Creative" },
+  { id: "5", name: "App Development", icon: Smartphone, category: "Tech" },
+  { id: "6", name: "Video Editing", icon: Video, category: "Creative" },
+  { id: "7", name: "Marketing", icon: Megaphone, category: "Lifestyle" },
+  { id: "8", name: "Music Production", icon: Music, category: "Creative" },
+];
 
 export const CURRENT_USER = {
   id: "current-user-id",
@@ -52,6 +63,66 @@ export const MOCK_USERS = [
     role: "Tutor",
     offering: [{ id: "13", name: "Calculus" }, { id: "14", name: "Algebra" }],
     seeking: [{ id: "15", name: "Piano" }, { id: "16", name: "Music" }]
+  },
+  {
+    id: "5",
+    name: "Venus Violet",
+    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&auto=format&fit=crop&q=60",
+    bio: "Yoga instructor and wellness coach. Want to build a meditation app!",
+    school: "Wellness University",
+    role: "Yoga Instructor",
+    offering: [{ id: "17", name: "Yoga" }, { id: "18", name: "Meditation" }],
+    seeking: [{ id: "19", name: "App Development" }, { id: "20", name: "UI Design" }]
+  },
+  {
+    id: "6",
+    name: "Nova Knight",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=60",
+    bio: "Python developer and data science enthusiast. Need help with data visualization.",
+    school: "Data Science Academy",
+    role: "Developer",
+    offering: [{ id: "21", name: "Python" }, { id: "22", name: "Machine Learning" }],
+    seeking: [{ id: "23", name: "Data Visualization" }, { id: "24", name: "Tableau" }]
+  },
+  {
+    id: "7",
+    name: "Stella Swift",
+    avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&auto=format&fit=crop&q=60",
+    bio: "Marketing guru looking to learn video editing for social media campaigns.",
+    school: "Business College",
+    role: "Marketing Specialist",
+    offering: [{ id: "25", name: "Social Media Marketing" }, { id: "26", name: "SEO" }],
+    seeking: [{ id: "27", name: "Video Editing" }, { id: "28", name: "Adobe Premiere" }]
+  },
+  {
+    id: "8",
+    name: "Orion Blake",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=60",
+    bio: "3D animator working on indie game. Need someone who can compose music!",
+    school: "Game Design Institute",
+    role: "3D Artist",
+    offering: [{ id: "29", name: "3D Modeling" }, { id: "30", name: "Blender" }],
+    seeking: [{ id: "31", name: "Music Composition" }, { id: "32", name: "Sound Design" }]
+  },
+  {
+    id: "9",
+    name: "Aurora Chen",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=60",
+    bio: "Photographer specializing in portraits. Want to build my own portfolio website.",
+    school: "Visual Arts School",
+    role: "Photographer",
+    offering: [{ id: "33", name: "Photography" }, { id: "34", name: "Lightroom" }],
+    seeking: [{ id: "35", name: "Web Development" }, { id: "36", name: "WordPress" }]
+  },
+  {
+    id: "10",
+    name: "Phoenix Rivera",
+    avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&auto=format&fit=crop&q=60",
+    bio: "Blockchain developer. Looking to learn about cybersecurity.",
+    school: "Tech Innovation Hub",
+    role: "Blockchain Dev",
+    offering: [{ id: "37", name: "Blockchain" }, { id: "38", name: "Solidity" }],
+    seeking: [{ id: "39", name: "Cybersecurity" }, { id: "40", name: "Ethical Hacking" }]
   }
 ];
 

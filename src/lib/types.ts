@@ -7,7 +7,7 @@ export interface Skill {
 
 export interface User {
     id: string;
-    email: string;
+    email?: string; // Optional for simulation
     name: string;
     role?: string;
     school?: string;
