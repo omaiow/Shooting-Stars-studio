@@ -66,8 +66,8 @@ export function Landing({ onEnter }: LandingProps) {
 
                     {/* Right: Visual Abstract */}
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.8, rotation: -10 }}
-                        animate={{ opacity: 1, scale: 1, rotation: 0 }}
+                        initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
                         transition={{ delay: 0.4, duration: 1, type: "spring" }}
                         className="flex-1 relative hidden md:block"
                     >

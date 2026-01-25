@@ -1,7 +1,7 @@
 // Simulation Control Panel with Enhanced Visualization
 import { useState } from 'react';
 import { useSimulation } from '../context/SimulationContext';
-import { Activity, Database, Play, RefreshCw, AlertTriangle, Download, Trash2, UserPlus, X, Plus, Save, ArrowLeft } from 'lucide-react';
+import { Activity, Database, Play, RefreshCw, AlertTriangle, Download, Trash2, UserPlus, X, Plus, Save, ArrowLeft, Zap } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { SKILLS_LIST } from '../lib/simulation';
 import type { Skill } from '../lib/types';
@@ -17,7 +17,8 @@ export function Simulation() {
         scenario,
         setScenario,
         matchProbability,
-        setMatchProbability
+        setMatchProbability,
+        simulateSwipe
     } = useSimulation();
 
     const [count, setCount] = useState(10);
@@ -33,6 +34,35 @@ export function Simulation() {
     const [newSeeking, setNewSeeking] = useState<Skill[]>([]);
     const [skillInputOffering, setSkillInputOffering] = useState('');
     const [skillInputSeeking, setSkillInputSeeking] = useState('');
+    const [simulationCount, setSimulationCount] = useState(500);
+    const [simulating, setSimulating] = useState(false);
+
+    const handleRunSimulation = async () => {
+        if (users.length < 2) {
+            alert("Need at least 2 users to simulate swipes!");
+            return;
+        }
+        setSimulating(true);
+
+        // Run simulation in a microtask to allow UI update
+        setTimeout(() => {
+            for (let i = 0; i < simulationCount; i++) {
+                const actorIndex = Math.floor(Math.random() * users.length);
+                const actor = users[actorIndex];
+
+                let targetIndex = Math.floor(Math.random() * users.length);
+                while (targetIndex === actorIndex) {
+                    targetIndex = Math.floor(Math.random() * users.length);
+                }
+                const target = users[targetIndex];
+
+                // Random swipe decision
+                const action = Math.random() > 0.5 ? 'like' : 'pass';
+                simulateSwipe(actor.id, target.id, action);
+            }
+            setSimulating(false);
+        }, 100);
+    };
 
     const handleGenerate = async () => {
         setGenerating(true);
@@ -406,6 +436,39 @@ export function Simulation() {
                             </span>
                         </div>
                     </div>
+
+
+                    {/* Automated Simulation */}
+                    <div className="card bg-zinc-900 border-zinc-800">
+                        <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+                            <Zap className="w-5 h-5 text-yellow-500" /> Auto-Swipe
+                        </h2>
+                        <p className="text-xs text-zinc-500 mb-4">Simulate random user activity.</p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-zinc-400 mb-2">Simulate Swipes: {simulationCount}</label>
+                                <input
+                                    type="range"
+                                    min="10"
+                                    max="1000"
+                                    step="10"
+                                    value={simulationCount}
+                                    onChange={e => setSimulationCount(parseInt(e.target.value))}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleRunSimulation}
+                                disabled={simulating || users.length < 2}
+                                className="btn w-full bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-500 border border-yellow-600/50 flex items-center justify-center gap-2"
+                            >
+                                {simulating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                {simulating ? 'Simulating...' : 'Run Simulation'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right Column: Visualizations */}
@@ -422,7 +485,7 @@ export function Simulation() {
                                             cx="50%"
                                             cy="50%"
                                             labelLine={false}
-                                            label={({ name, percent }: { name: string; percent?: number }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                                            label={({ name, percent }: { name?: string | number; percent?: number }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                                             outerRadius={80}
                                             fill="#8884d8"
                                             dataKey="value"
@@ -481,6 +544,6 @@ export function Simulation() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

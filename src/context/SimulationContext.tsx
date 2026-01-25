@@ -36,6 +36,7 @@ interface SimulationContextType {
 
     // Swipe tracking
     recordSwipe: (targetUserId: string, action: 'like' | 'pass') => void;
+    simulateSwipe: (actorId: string, targetId: string, action: 'like' | 'pass') => void;
 
     // Simulation controls
     scenario: ScenarioType;
@@ -156,6 +157,19 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         setMatchProbability(0.5);
     };
 
+    const simulateSwipe = (actorId: string, targetId: string, action: 'like' | 'pass') => {
+        setSwipeHistory(prev => [...prev, {
+            userId: actorId,
+            targetId: targetId,
+            action,
+        }]);
+
+        // If it's a like, potentially create a match based on probability
+        if (action === 'like' && Math.random() < matchProbability) {
+            addMatch(actorId, targetId);
+        }
+    };
+
     // Calculate statistics
     const stats: SimulationStats = {
         totalUsers: users.length,
@@ -185,6 +199,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             addMatch,
             getMatchesForUser,
             recordSwipe,
+            simulateSwipe,
             scenario,
             setScenario,
             matchProbability,
