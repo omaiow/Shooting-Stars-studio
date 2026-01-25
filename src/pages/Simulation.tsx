@@ -56,8 +56,22 @@ export function Simulation() {
                 }
                 const target = users[targetIndex];
 
-                // Random swipe decision
-                const action = Math.random() > 0.5 ? 'like' : 'pass';
+                // Skill-based decision making
+                const seekingSkills = actor.seeking.map(s => s.name);
+                const offeredSkills = target.offering.map(s => s.name);
+
+                // Do they offer something I want?
+                const hasSkillMatch = seekingSkills.some(skill => offeredSkills.includes(skill));
+
+                // Baseline behavior: heavily weighted by skill match, but with some randomness
+                let likeProbability = hasSkillMatch ? 0.8 : 0.2;
+
+                // In Scarcity scenario: 
+                // 90% need Web Dev (seeking), 10% offer it.
+                // If I need Web Dev and you don't have it -> No Like.
+                // If I need Web Dev and you HAVE it -> HIGH Like.
+
+                const action = Math.random() < likeProbability ? 'like' : 'pass';
                 simulateSwipe(actor.id, target.id, action);
             }
             setSimulating(false);

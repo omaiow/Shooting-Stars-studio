@@ -157,7 +157,21 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         setMatchProbability(0.5);
     };
 
+
+
     const simulateSwipe = (actorId: string, targetId: string, action: 'like' | 'pass') => {
+        // Smart Simulation Logic:
+        // If action is passed explicitly (e.g. manual override), use it.
+        // But for batch simulation, the UI will pass the result of a decision. 
+        // We should actually move the decision logic HERE or make the UI smarter.
+        // Let's rely on the UI calling this with the *intended* action, but we can enforce logic *if* the UI asks us to decide,
+        // or we can just implement the decision logic in the UI. 
+        // BETTER: The UI loop should look at the users and decide 'like' or 'pass' based on skills.
+
+        // HOWEVER, to keep it simple for the hook consumer, let's allow the consumer to pass 'decide' or handling it inside.
+        // But the signature is `action: 'like' | 'pass'`.
+        // So I will update the swipe recording.
+
         setSwipeHistory(prev => [...prev, {
             userId: actorId,
             targetId: targetId,
